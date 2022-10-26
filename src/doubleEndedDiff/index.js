@@ -1,5 +1,11 @@
 let callbacks = {}
 
+/**
+ * javascript comment
+ * @Author: 王林25
+ * @Date: 2022-10-26 09:55:20
+ * @Desc: 等待函数
+ */
 const wait = (time = 3000) => {
   return new Promise(resolve => {
     setTimeout(() => {
@@ -64,8 +70,7 @@ const createEl = vnode => {
  * @Date: 2021-06-29 13:42:55
  * @Desc: 判断是否是同一个节点
  */
-const isSameNode = (a, b, i, j) => {
-  callbacks.updateCompareNodes(i, j)
+const isSameNode = (a, b) => {
   return a.key === b.key && a.tag === b.tag
 }
 
@@ -87,30 +92,6 @@ const findSameNode = (list, node) => {
  * @Date: 2021-06-29 09:28:42
  * @Desc: diff算法
  */
-const getPointerList = (os, oe, ns, ne) => {
-  return {
-    oldPointerList: [
-      {
-        name: 'oldStartIdx',
-        value: os
-      },
-      {
-        name: 'oldEndIdx',
-        value: oe
-      }
-    ],
-    newPointerList: [
-      {
-        name: 'newStartIdx',
-        value: ns
-      },
-      {
-        name: 'newEndIdx',
-        value: ne
-      }
-    ]
-  }
-}
 const diff = async (el, oldChildren, newChildren) => {
   // 指针
   let oldStartIdx = 0
@@ -122,28 +103,62 @@ const diff = async (el, oldChildren, newChildren) => {
   let oldEndVNode = oldChildren[oldEndIdx]
   let newStartVNode = newChildren[newStartIdx]
   let newEndVNode = newChildren[newEndIdx]
-  callbacks.updatePointers(
-    getPointerList(oldStartIdx, oldEndIdx, newStartIdx, newEndIdx)
-  )
+  callbacks.updatePointers(oldStartIdx, oldEndIdx, newStartIdx, newEndIdx)
   await wait()
   while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
+    let stop = false
+    let _isSameNode = false
     if (oldStartVNode === null) {
+      callbacks.updateInfo('')
       oldStartVNode = oldChildren[++oldStartIdx]
-    } else if (oldEndVNode === null) {
+      stop = true
+    }
+    if (!stop && oldEndVNode === null) {
+      callbacks.updateInfo('')
       oldEndVNode = oldChildren[--oldEndIdx]
-    } else if (newStartVNode === null) {
+      stop = true
+    }
+    if (!stop && newStartVNode === null) {
+      callbacks.updateInfo('')
       newStartVNode = oldChildren[++newStartIdx]
-    } else if (newEndVNode === null) {
+      stop = true
+    }
+    if (!stop && newEndVNode === null) {
+      callbacks.updateInfo('')
       newEndVNode = oldChildren[--newEndIdx]
-    } else if (
-      isSameNode(oldStartVNode, newStartVNode, oldStartIdx, newStartIdx)
-    ) {
+      stop = true
+    }
+    if (!stop) {
+      callbacks.updateInfo('头-头比较')
+      callbacks.updateCompareNodes(oldStartIdx, newStartIdx)
+      _isSameNode = isSameNode(oldStartVNode, newStartVNode)
+      if (_isSameNode) {
+        callbacks.updateInfo(
+          'key值相同，可以复用，进行patch打补丁操作。新旧节点位置相同，不需要移动节点'
+        )
+      }
+      await wait()
+    }
+    if (!stop && _isSameNode) {
       // 头-头
       patchVNode(oldStartVNode, newStartVNode)
       // 更新指针
       oldStartVNode = oldChildren[++oldStartIdx]
       newStartVNode = newChildren[++newStartIdx]
-    } else if (isSameNode(oldStartVNode, newEndVNode, oldStartIdx, newEndIdx)) {
+      stop = true
+    }
+    if (!stop) {
+      callbacks.updateInfo('头-尾比较')
+      callbacks.updateCompareNodes(oldStartIdx, newEndIdx)
+      _isSameNode = isSameNode(oldStartVNode, newEndVNode)
+      if (_isSameNode) {
+        callbacks.updateInfo(
+          'key值相同，可以复用，进行patch打补丁操作。新旧节点位置不同，需要移动'
+        )
+      }
+      await wait()
+    }
+    if (!stop && _isSameNode) {
       // 头-尾
       patchVNode(oldStartVNode, newEndVNode)
       // 把oldStartVNode节点移动到最后
@@ -152,7 +167,20 @@ const diff = async (el, oldChildren, newChildren) => {
       // 更新指针
       oldStartVNode = oldChildren[++oldStartIdx]
       newEndVNode = newChildren[--newEndIdx]
-    } else if (isSameNode(oldEndVNode, newStartVNode, oldEndIdx, newStartIdx)) {
+      stop = true
+    }
+    if (!stop) {
+      callbacks.updateInfo('尾-头比较')
+      callbacks.updateCompareNodes(oldEndIdx, newStartIdx)
+      _isSameNode = isSameNode(oldEndVNode, newStartVNode)
+      if (_isSameNode) {
+        callbacks.updateInfo(
+          'key值相同，可以复用，进行patch打补丁操作。新旧节点位置不同，需要移动'
+        )
+      }
+      await wait()
+    }
+    if (!stop && _isSameNode) {
       // 尾-头
       patchVNode(oldEndVNode, newStartVNode)
       // 把oldEndVNode节点移动到oldStartVNode前
@@ -161,37 +189,71 @@ const diff = async (el, oldChildren, newChildren) => {
       // 更新指针
       oldEndVNode = oldChildren[--oldEndIdx]
       newStartVNode = newChildren[++newStartIdx]
-    } else if (isSameNode(oldEndVNode, newEndVNode, oldEndIdx, newEndIdx)) {
+      stop = true
+    }
+    if (!stop) {
+      callbacks.updateInfo('尾-尾比较')
+      callbacks.updateCompareNodes(oldEndIdx, newEndIdx)
+      _isSameNode = isSameNode(oldEndVNode, newEndVNode)
+      if (_isSameNode) {
+        callbacks.updateInfo(
+          'key值相同，可以复用，进行patch打补丁操作。新旧节点位置相同，不需要移动'
+        )
+      }
+      await wait()
+    }
+    if (!stop && _isSameNode) {
       // 尾-尾
       patchVNode(oldEndVNode, newEndVNode)
       // 更新指针
       oldEndVNode = oldChildren[--oldEndIdx]
       newEndVNode = newChildren[--newEndIdx]
-    } else {
+      stop = true
+    }
+    callbacks.updateCompareNodes(-1, -1)
+    if (!stop) {
+      callbacks.updateInfo(
+        '没有找到可复用节点，直接在旧列表里搜索是否有于newStartVNode节点key值相同的节点'
+      )
+      callbacks.updateCompareNodes(-1, newStartIdx)
+      await wait()
       let findIndex = findSameNode(oldChildren, newStartVNode)
       // newStartVNode在旧列表里不存在，那么是新节点，创建插入
       if (findIndex === -1) {
+        callbacks.updateInfo('该节点在旧列表里不存在，需要创建并且插入')
         el.insertBefore(createEl(newStartVNode), oldStartVNode.el)
         callbacks.insertNode(newStartVNode, oldStartIdx)
+        await wait()
       } else {
         // 在旧列表里存在，那么进行patch，并且移动到oldStartVNode前
+        callbacks.updateInfo(
+          '该节点在旧列表里存在可复用节点，进行path打补丁操作，并且移动节点'
+        )
+        callbacks.updateCompareNodes(findIndex, newStartIdx)
+        await wait()
+        callbacks.updateCompareNodes(-1, -1)
         let oldVNode = oldChildren[findIndex]
         patchVNode(oldVNode, newStartVNode)
         el.insertBefore(oldVNode.el, oldStartVNode.el)
-        callbacks.moveNode(findIndex, oldStartIdx)
+        callbacks.moveNode(findIndex, oldStartIdx, true)
         oldChildren[findIndex] = null
+        await wait()
       }
       newStartVNode = newChildren[++newStartIdx]
     }
     callbacks.updateCompareNodes(-1, -1)
-    callbacks.updatePointers(
-      getPointerList(oldStartIdx, oldEndIdx, newStartIdx, newEndIdx)
-    )
+    callbacks.updateInfo('')
+    callbacks.updatePointers(oldStartIdx, oldEndIdx, newStartIdx, newEndIdx)
     await wait()
   }
   // 旧列表里存在新列表里没有的节点，需要删除
   if (oldStartIdx <= oldEndIdx) {
     for (let i = oldStartIdx; i <= oldEndIdx; i++) {
+      console.log(oldChildren, i)
+      callbacks.updateInfo('该节点在新列表里不存在，需要删除')
+      callbacks.updateDeleteNode(i)
+      await wait(1000)
+      callbacks.updateDeleteNode(-1)
       removeEvent(oldChildren[i])
       if (oldChildren[i]) {
         el.removeChild(oldChildren[i].el)
@@ -209,6 +271,8 @@ const diff = async (el, oldChildren, newChildren) => {
       await wait()
     }
   }
+  callbacks.updateDeleteNode(-1)
+  callbacks.updateInfo('大功告成')
 }
 
 /**
