@@ -92,6 +92,13 @@ export const useStore = defineStore('store', {
   },
   {
     "tag": "div",
+    "children": "i",
+    "data": {
+      "key": 9
+    }
+  },
+  {
+    "tag": "div",
     "children": "a",
     "data": {
       "key": 1

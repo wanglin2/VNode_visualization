@@ -1,4 +1,5 @@
 let callbacks = {}
+let time = 3000
 
 /**
  * javascript comment
@@ -6,11 +7,14 @@ let callbacks = {}
  * @Date: 2022-10-26 09:55:20
  * @Desc: 等待函数
  */
-const wait = (time = 3000) => {
+const wait = t => {
   return new Promise(resolve => {
-    setTimeout(() => {
-      resolve()
-    }, time)
+    setTimeout(
+      () => {
+        resolve()
+      },
+      t === undefined ? time : t
+    )
   })
 }
 
@@ -134,7 +138,7 @@ const diff = async (el, oldChildren, newChildren) => {
       _isSameNode = isSameNode(oldStartVNode, newStartVNode)
       if (_isSameNode) {
         callbacks.updateInfo(
-          'key值相同，可以复用，进行patch打补丁操作。新旧节点位置相同，不需要移动节点'
+          'key值相同，可以复用，进行patch打补丁操作。新旧节点位置相同，不需要移动对应的真实DOM节点'
         )
       }
       await wait()
@@ -153,7 +157,7 @@ const diff = async (el, oldChildren, newChildren) => {
       _isSameNode = isSameNode(oldStartVNode, newEndVNode)
       if (_isSameNode) {
         callbacks.updateInfo(
-          'key值相同，可以复用，进行patch打补丁操作。新旧节点位置不同，需要移动'
+          'key值相同，可以复用，进行patch打补丁操作。新旧节点位置不同，需要移动对应的真实DOM节点'
         )
       }
       await wait()
@@ -175,7 +179,7 @@ const diff = async (el, oldChildren, newChildren) => {
       _isSameNode = isSameNode(oldEndVNode, newStartVNode)
       if (_isSameNode) {
         callbacks.updateInfo(
-          'key值相同，可以复用，进行patch打补丁操作。新旧节点位置不同，需要移动'
+          'key值相同，可以复用，进行patch打补丁操作。新旧节点位置不同，需要移动对应的真实DOM节点'
         )
       }
       await wait()
@@ -197,7 +201,7 @@ const diff = async (el, oldChildren, newChildren) => {
       _isSameNode = isSameNode(oldEndVNode, newEndVNode)
       if (_isSameNode) {
         callbacks.updateInfo(
-          'key值相同，可以复用，进行patch打补丁操作。新旧节点位置相同，不需要移动'
+          'key值相同，可以复用，进行patch打补丁操作。新旧节点位置相同，不需要移动对应的真实DOM节点'
         )
       }
       await wait()
@@ -213,21 +217,22 @@ const diff = async (el, oldChildren, newChildren) => {
     callbacks.updateCompareNodes(-1, -1)
     if (!stop) {
       callbacks.updateInfo(
-        '没有找到可复用节点，直接在旧列表里搜索是否有于newStartVNode节点key值相同的节点'
+        '头尾比较没有找到可复用节点，直接在旧的VNode列表里搜索是否有可复用节点'
       )
       callbacks.updateCompareNodes(-1, newStartIdx)
       await wait()
       let findIndex = findSameNode(oldChildren, newStartVNode)
       // newStartVNode在旧列表里不存在，那么是新节点，创建插入
       if (findIndex === -1) {
-        callbacks.updateInfo('该节点在旧列表里不存在，需要创建并且插入')
+        callbacks.updateInfo('该节点在旧列表里不存在，需要创建DOM节点并插入')
+        await wait()
         el.insertBefore(createEl(newStartVNode), oldStartVNode.el)
         callbacks.insertNode(newStartVNode, oldStartIdx)
         await wait()
       } else {
         // 在旧列表里存在，那么进行patch，并且移动到oldStartVNode前
         callbacks.updateInfo(
-          '该节点在旧列表里存在可复用节点，进行path打补丁操作，并且移动节点'
+          '该节点在旧的VNode列表里存在可复用节点，进行path打补丁操作，并且移动对应的真实DOM节点。然后将该VNode置空'
         )
         callbacks.updateCompareNodes(findIndex, newStartIdx)
         await wait()
@@ -248,31 +253,50 @@ const diff = async (el, oldChildren, newChildren) => {
   }
   // 旧列表里存在新列表里没有的节点，需要删除
   if (oldStartIdx <= oldEndIdx) {
+    callbacks.updateInfo(
+      '新的VNode列表已比较完毕，开始删除旧的VNode列表里不再需要的节点'
+    )
+    await wait()
     for (let i = oldStartIdx; i <= oldEndIdx; i++) {
-      console.log(oldChildren, i)
-      callbacks.updateInfo('该节点在新列表里不存在，需要删除')
-      callbacks.updateDeleteNode(i)
-      await wait(1000)
-      callbacks.updateDeleteNode(-1)
-      removeEvent(oldChildren[i])
       if (oldChildren[i]) {
+        callbacks.updateInfo('该节点在新列表里不存在，需要删除')
+        callbacks.updateDeleteNode(i)
+        await wait()
+        callbacks.updateInfo('')
+        callbacks.updateDeleteNode(-1)
+        removeEvent(oldChildren[i])
         el.removeChild(oldChildren[i].el)
         callbacks.removeChild(i)
+      } else {
+        callbacks.updateInfo('空的VNode，跳过')
+        callbacks.updateDeleteNode(i)
+        await wait()
+        callbacks.updateInfo('')
+        callbacks.updateDeleteNode(-1)
       }
-      await wait()
     }
   } else if (newStartIdx <= newEndIdx) {
+    callbacks.updateInfo(
+      '旧的VNode列表已比较完毕，开始添加旧的VNode列表里不存在的节点'
+    )
+    await wait()
     let before = newChildren[newEndIdx + 1]
       ? newChildren[newEndIdx + 1].el
       : null
     for (let i = newStartIdx; i <= newEndIdx; i++) {
-      el.insertBefore(createEl(newChildren[i]), before)
-      callbacks.insertNode(newChildren[i], newEndIdx + 1)
+      callbacks.updateInfo('该节点在旧列表里不存在，需要添加')
+      callbacks.updateAddNode(i)
       await wait()
+      callbacks.updateInfo('')
+      callbacks.updateAddNode(-1)
+      el.insertBefore(createEl(newChildren[i]), before)
+      callbacks.insertNode(newChildren[i], before ? newEndIdx + 1 : -1, true)
     }
   }
   callbacks.updateDeleteNode(-1)
+  callbacks.updateAddNode(-1)
   callbacks.updateInfo('大功告成')
+  callbacks.done()
 }
 
 /**
@@ -465,8 +489,9 @@ const patchVNode = (oldVNode, newVNode) => {
  * @Date: 2021-06-28 15:55:23
  * @Desc: 入口方法
  */
-export const patch = (oldVNode, newVNode, handles) => {
+export const patch = (oldVNode, newVNode, handles, speed) => {
   callbacks = handles
+  time = speed
   // dom元素转换成vnode
   if (!oldVNode.tag) {
     let el = oldVNode
