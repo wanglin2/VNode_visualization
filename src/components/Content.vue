@@ -8,6 +8,7 @@ const store = useStore()
 const oldPointerList = ref([])
 const newPointerList = ref([])
 // 不可见列表，用来作为初始旧的VNode的关联元素
+const showHiddenNodeList = ref(true)
 const _oldVNodeList = computed(() => {
   return JSON.parse(store.oldVNode)
 })
@@ -37,6 +38,7 @@ const isRunning = ref(false)
 
 // 复位
 const reset = () => {
+  showHiddenNodeList.value = false
   oldPointerList.value = []
   newPointerList.value = []
   actNodeList.value = []
@@ -180,29 +182,32 @@ const start = () => {
     return
   }
   reset()
-  isRunning.value = true
-  actNodeList.value = JSON.parse(store.oldVNode)
-  oldVNodeList.value = JSON.parse(store.oldVNode)
-  newVNodeList.value = JSON.parse(store.newVNode)
   nextTick(() => {
-    let oldVNode = h(
-      'div',
-      { key: 1 },
-      JSON.parse(store.oldVNode).map((item, index) => {
-        let vnode = h(item.tag, item.data, item.children)
-        vnode.el = oldNodeList.value[index]
-        return vnode
-      })
-    )
-    oldVNode.el = oldNode.value
-    let newVNode = h(
-      'div',
-      { key: 1 },
-      JSON.parse(store.newVNode).map(item => {
-        return h(item.tag, item.data, item.children)
-      })
-    )
-    patch(oldVNode, newVNode, handles, speed.value)
+    showHiddenNodeList.value = true
+    isRunning.value = true
+    actNodeList.value = JSON.parse(store.oldVNode)
+    oldVNodeList.value = JSON.parse(store.oldVNode)
+    newVNodeList.value = JSON.parse(store.newVNode)
+    nextTick(() => {
+      let oldVNode = h(
+        'div',
+        { key: 1 },
+        JSON.parse(store.oldVNode).map((item, index) => {
+          let vnode = h(item.tag, item.data, item.children)
+          vnode.el = oldNodeList.value[index]
+          return vnode
+        })
+      )
+      oldVNode.el = oldNode.value
+      let newVNode = h(
+        'div',
+        { key: 1 },
+        JSON.parse(store.newVNode).map(item => {
+          return h(item.tag, item.data, item.children)
+        })
+      )
+      patch(oldVNode, newVNode, handles, speed.value)
+    })
   })
 }
 </script>
@@ -317,7 +322,7 @@ const start = () => {
           </div>
         </div>
         <!-- 隐藏 -->
-        <div class="hide">
+        <div class="hide" v-if="showHiddenNodeList">
           <div class="nodes" ref="oldNode">
             <div
               v-for="(item, index) in _oldVNodeList"
