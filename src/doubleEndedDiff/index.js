@@ -108,7 +108,6 @@ const diff = async (el, oldChildren, newChildren) => {
   let newStartVNode = newChildren[newStartIdx]
   let newEndVNode = newChildren[newEndIdx]
   callbacks.updatePointers(oldStartIdx, oldEndIdx, newStartIdx, newEndIdx)
-  await wait()
   while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
     let stop = false
     let _isSameNode = false

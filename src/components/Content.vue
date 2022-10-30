@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { patch, h } from '../doubleEndedDiff/index'
 import { useStore } from '../store'
 
@@ -53,22 +53,12 @@ const reset = () => {
 }
 
 // 在节点列表节点列表查找某个节点所在索引
-const findIndex = (vnode, list) => {
+const findIndex = (vnode) => {
   return !vnode
     ? -1
-    : (list || actNodeList.value).findIndex(item => {
+    : actNodeList.value.findIndex(item => {
         return item && item.data.key === vnode.data.key
       })
-}
-const findPointerIndex = (index, type) => {
-  if (type === 'old') {
-    let vNode = _oldVNodeList.value[index]
-    return findIndex(vNode)
-  }
-  if (type === 'new') {
-    let vNode = _newVNodeList.value[index]
-    return findIndex(vNode, newVNodeList.value)
-  }
 }
 
 // 操作
@@ -78,28 +68,28 @@ const handles = {
     oldPointerList.value = [
       {
         name: 'oldStartIdx',
-        value: oldStartIdx //findPointerIndex(oldStartIdx, 'old')
+        value: oldStartIdx
       },
       {
         name: 'oldEndIdx',
-        value: oldEndIdx //findPointerIndex(oldEndIdx, 'old')
+        value: oldEndIdx
       }
     ]
     newPointerList.value = [
       {
         name: 'newStartIdx',
-        value: newStartIdx //findPointerIndex(newStartIdx, 'new')
+        value: newStartIdx 
       },
       {
         name: 'newEndIdx',
-        value: newEndIdx //findPointerIndex(newEndIdx, 'new')
+        value: newEndIdx
       }
     ]
   },
   // 移动节点
   moveNode(oldIndex, newIndex, empty = false) {
-    let oldVNode = _oldVNodeList.value[oldIndex]
-    let newVNode = _oldVNodeList.value[newIndex]
+    let oldVNode = oldVNodeList.value[oldIndex]
+    let newVNode = oldVNodeList.value[newIndex]
     let fromIndex = findIndex(oldVNode)
     let toIndex = findIndex(newVNode)
     actNodeList.value[fromIndex] = '#'
@@ -122,10 +112,10 @@ const handles = {
       actNodeList.value.push(node)
     } else {
       if (inNewVNode) {
-        let vNode = _newVNodeList.value[index]
+        let vNode = newVNodeList.value[index]
         targetIndex = findIndex(vNode)
       } else {
-        let vNode = _oldVNodeList.value[index]
+        let vNode = oldVNodeList.value[index]
         targetIndex = findIndex(vNode)
       }
       actNodeList.value.splice(targetIndex, 0, node)
@@ -133,22 +123,14 @@ const handles = {
   },
   // 删除节点
   removeChild(index) {
-    let vNode = _oldVNodeList.value[index]
+    let vNode = oldVNodeList.value[index]
     let targetIndex = findIndex(vNode)
     actNodeList.value.splice(targetIndex, 1)
   },
   // 更新当前比较节点
   updateCompareNodes(a, b) {
-    if (a === -1) {
-      currentCompareOldNodeIndex.value = -1
-    } else {
-      currentCompareOldNodeIndex.value = a //findPointerIndex(a, 'old')
-    }
-    if (b === -1) {
-      currentCompareNewNodeIndex.value = -1
-    } else {
-      currentCompareNewNodeIndex.value = b //findPointerIndex(b, 'new')
-    }
+    currentCompareOldNodeIndex.value = a
+    currentCompareNewNodeIndex.value = b
   },
   // 更新提示信息
   updateInfo(tip) {
@@ -159,7 +141,7 @@ const handles = {
     if (index === -1) {
       currentDeleteNodeIndex.value = -1
     } else {
-      currentDeleteNodeIndex.value = index //findPointerIndex(index, 'old')
+      currentDeleteNodeIndex.value = index
     }
   },
   // 更新即将新增的节点
@@ -226,7 +208,7 @@ const start = () => {
         </div>
       </div>
       <div class="right">
-        <div class="title">Diff算法动画演示</div>
+        <div class="title">双端Diff算法动画演示</div>
       </div>
     </div>
     <!-- 主体 -->
@@ -273,21 +255,23 @@ const start = () => {
           <div class="nodeList">
             <div class="name" v-if="newVNodeList.length > 0">新的VNode列表</div>
             <div class="nodes">
-              <div
-                class="nodeWrap"
-                v-for="(item, index) in newVNodeList"
-                :key="item.data.key"
-                :class="{
-                  current: currentCompareNewNodeIndex === index,
-                  add: currentAddNodeIndex === index,
-                  end:
-                    newPointerList.length > 0 &&
-                    (index < newPointerList[0].value ||
-                      index > newPointerList[newPointerList.length - 1].value)
-                }"
-              >
-                <div class="node">{{ item.children }}</div>
-              </div>
+              <TransitionGroup name="list">
+                <div
+                  class="nodeWrap"
+                  v-for="(item, index) in newVNodeList"
+                  :key="item.data.key"
+                  :class="{
+                    current: currentCompareNewNodeIndex === index,
+                    add: currentAddNodeIndex === index,
+                    end:
+                      newPointerList.length > 0 &&
+                      (index < newPointerList[0].value ||
+                        index > newPointerList[newPointerList.length - 1].value)
+                  }"
+                >
+                  <div class="node">{{ item.children }}</div>
+                </div>
+              </TransitionGroup>
             </div>
           </div>
           <!-- 提示信息 -->
