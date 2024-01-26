@@ -1,5 +1,4 @@
 let callbacks = {}
-let time = 3000
 
 /**
  * javascript comment
@@ -7,16 +6,7 @@ let time = 3000
  * @Date: 2022-10-26 09:55:20
  * @Desc: 等待函数
  */
-const wait = t => {
-  return new Promise(resolve => {
-    setTimeout(
-      () => {
-        resolve()
-      },
-      t === undefined ? time : t
-    )
-  })
-}
+let wait = () => {}
 
 /**
  * javascript comment
@@ -488,9 +478,9 @@ const patchVNode = (oldVNode, newVNode) => {
  * @Date: 2021-06-28 15:55:23
  * @Desc: 入口方法
  */
-export const patch = (oldVNode, newVNode, handles, speed) => {
+export const patch = (oldVNode, newVNode, handles, waitFn) => {
+  waitFn && (wait = waitFn);
   callbacks = handles
-  time = speed
   // dom元素转换成vnode
   if (!oldVNode.tag) {
     let el = oldVNode
