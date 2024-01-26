@@ -32,9 +32,15 @@ const currentAddNodeIndex = ref(-1)
 // 提示信息
 const info = ref('')
 // 速度
-const speed = ref(3000)
+const speed = ref(2000)
 // 是否正在运行中
 const isRunning = ref(false)
+const isFinish = ref(false)
+const isStart = ref(false)
+// 是否自动
+const isAuto = ref(false)
+// 中断
+const isStop = ref(false)
 
 // 复位
 const reset = () => {
@@ -50,10 +56,13 @@ const reset = () => {
   currentAddNodeIndex.value = -1
   info.value = ''
   isRunning.value = false
+  isFinish.value = false
+  isStart.value = false
+  isStop.value = true
 }
 
 // 在节点列表节点列表查找某个节点所在索引
-const findIndex = (vnode) => {
+const findIndex = vnode => {
   return !vnode
     ? -1
     : actNodeList.value.findIndex(item => {
@@ -78,7 +87,7 @@ const handles = {
     newPointerList.value = [
       {
         name: 'newStartIdx',
-        value: newStartIdx 
+        value: newStartIdx
       },
       {
         name: 'newEndIdx',
@@ -155,15 +164,39 @@ const handles = {
   // 完成
   done() {
     isRunning.value = false
+    isFinish.value = true
   }
 }
 
-// 启动
-const start = () => {
-  if (isRunning.value) {
-    return
-  }
-  reset()
+const waitAuto = t => {
+  return new Promise((resolve, reject) => {
+    setTimeout(
+      () => {
+        if (isStop.value) {
+          reject()
+        } else {
+          resolve()
+        }
+      },
+      t === undefined ? speed.value : t
+    )
+  })
+}
+
+const waitStep = t => {
+  return new Promise(resolve => {
+    window.addEventListener(
+      'step',
+      () => {
+        resolve()
+      },
+      { once: true }
+    )
+  })
+}
+
+const startFn = (wait = waitAuto) => {
+  isStop.value = false
   nextTick(() => {
     showHiddenNodeList.value = true
     isRunning.value = true
@@ -188,9 +221,34 @@ const start = () => {
           return h(item.tag, item.data, item.children)
         })
       )
-      patch(oldVNode, newVNode, handles, speed.value)
+      patch(oldVNode, newVNode, handles, wait)
     })
   })
+}
+
+// 启动
+const start = () => {
+  if (isRunning.value) {
+    return
+  }
+  if (isStop.value) {
+    isStop.value == false
+  }
+  reset()
+  startFn(waitAuto)
+}
+
+const step = () => {
+  if (isStop.value) {
+    isStop.value == false
+  }
+  if (!isStart.value) {
+    reset()
+    isStart.value = true
+    startFn(waitStep)
+  } else {
+    window.dispatchEvent(new Event('step'))
+  }
 }
 </script>
 
@@ -199,13 +257,28 @@ const start = () => {
     <!-- 工具栏 -->
     <div class="toolbar">
       <div class="left">
-        <div class="btn" @click="start" :class="{ disabled: isRunning }">
-          启动
-        </div>
-        <div class="inputBox">
-          <span class="name">速度(单位：ms)：</span>
-          <input type="text" v-model="speed" />
-        </div>
+        <label for="auto">自动:</label>
+        <input
+          type="checkbox"
+          id="auto"
+          v-model="isAuto"
+          :disabled="isRunning || isStart"
+        />
+        <template v-if="isAuto">
+          <div class="btn" @click="start" :class="{ disabled: isRunning }">
+            启动
+          </div>
+          <div class="inputBox">
+            <span class="name">速度(单位：ms)：</span>
+            <input type="text" v-model="speed" />
+          </div>
+        </template>
+        <template v-else>
+          <div class="btn" @click="step" :class="{ disabled: isFinish }">
+            下一步
+          </div>
+        </template>
+        <div class="btn" @click="reset">重置</div>
       </div>
       <div class="right">
         <div class="title">双端Diff算法动画演示</div>
@@ -357,6 +430,12 @@ const start = () => {
       display: flex;
       align-items: center;
 
+      & > * {
+        & + * {
+          margin-left: 6px;
+        }
+      }
+
       .btn {
         height: 30px;
         padding: 0 10px;
@@ -378,7 +457,6 @@ const start = () => {
 
       .inputBox {
         height: 30px;
-        margin-left: 50px;
 
         input {
           width: 80px;
